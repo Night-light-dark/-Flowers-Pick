@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flowers Pick | Blooming Paradise</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Three.js (For the Aurora Background) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  
+  <!-- Lottie Player (For Micro-interactions) -->
+  <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  
+  <!-- Google Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#fff0f5',   /* Lavender Blush */
+              100: '#ffe4e6',
+              500: '#f43f5e',  /* Rose */
+              600: '#e11d48',
+              800: '#9f1239',
+              900: '#881337',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            serif: ['Playfair Display', 'serif'],
+          },
+          animation: {
+            'float': 'float 6s ease-in-out infinite',
+            'spin-slow': 'spin 12s linear infinite',
+            'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'scroll': 'scroll 40s linear infinite',
+          },
+          keyframes: {
+            float: {
+              '0%, 100%': { transform: 'translateY(0)' },
+              '50%': { transform: 'translateY(-20px)' },
+            },
+            scroll: {
+              '0%': { transform: 'translateX(0)' },
+              '100%': { transform: 'translateX(-100%)' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      --cursor-size: 20px;
+      --cursor-hover-size: 60px;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      color: #1a1a1a;
+      overflow-x: hidden;
+      cursor: none; /* Custom cursor */
+      background-color: #ffffff;
+    }
+
+    /* Three.js Background Container */
+    #canvas-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100vh;
+      z-index: -2;
+      background: #000; /* Fallback */
+    }
+
+    /* White Overlay for "White Theme" (Aurora shines through subtly) */
+    .bg-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100vh;
+      background: rgba(255, 255, 255, 0.85); /* 85% White opacity */
+      backdrop-filter: blur(8px);
+      z-index: -1;
+    }
+
+    /* Custom Cursor */
+    .cursor-dot, .cursor-outline {
+      position: fixed;
+      top: 0;
+      left: 0;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      z-index: 9999;
+      pointer-events: none;
+    }
+    .cursor-dot {
+      width: 8px;
+      height: 8px;
+      background-color: #e11d48;
+    }
+    .cursor-outline {
+      width: 40px;
+      height: 40px;
+      border: 1px solid rgba(225, 29, 72, 0.5);
+      transition: width 0.2s, height 0.2s, background-color 0.2s;
+    }
+    body:hover .cursor-outline.hovered {
+      width: 60px;
+      height: 60px;
+      background-color: rgba(225, 29, 72, 0.1);
+      border-color: transparent;
+    }
+
+    /* Glassmorphism Cards */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.65);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+      transition: all 0.4s ease;
+    }
+    
+    .glass-nav {
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(15px);
+      box-shadow: 0 2px 20px rgba(0,0,0,0.05);
+    }
+
+    /* Scroll Reveal Animation */
+    .reveal {
+      opacity: 0;
+      transform: translateY(40px);
+      transition: all 1s cubic-bezier(0.5, 0, 0, 1);
+    }
+    .reveal.active {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Border Beam Effect */
+    .border-beam {
+      position: relative;
+      overflow: hidden;
+    }
+    .border-beam::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 50%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
+      transform: skewX(-25deg);
+      transition: 0.5s;
+    }
+    .border-beam:hover::after {
+      left: 150%;
+      transition: 0.7s ease-in-out;
+    }
+
+    /* Button Ripple */
+    .btn-ripple {
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-ripple:after {
+      content: "";
+      background: rgba(255, 255, 255, 0.4);
+      display: block;
+      position: absolute;
+      border-radius: 50%;
+      padding-top: 240%;
+      padding-left: 240%;
+      margin-top: -120%;
+      margin-left: -120%;
+      opacity: 0;
+      transition: all 0.8s;
+    }
+    .btn-ripple:active:after {
+      padding-top: 0;
+      padding-left: 0;
+      margin-top: 0;
+      margin-left: 0;
+      opacity: 1;
+      transition: 0s;
+    }
+
+    /* Image Parallax Container */
+    .img-container {
+        overflow: hidden;
+    }
+    .img-container img {
+        transition: transform 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+    .img-container:hover img {
+        transform: scale(1.1);
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #fff; }
+    ::-webkit-scrollbar-thumb { background: #fda4af; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #f43f5e; }
+  </style>
+</head>
+<body class="selection:bg-brand-100 selection:text-brand-900">
+
+  <!-- Three.js Background -->
+  <div id="canvas-container"></div>
+  <!-- White Overlay to soften the background for a white theme -->
+  <div class="bg-overlay"></div>
+
+  <!-- Custom Cursor -->
+  <div class="cursor-dot hidden md:block"></div>
+  <div class="cursor-outline hidden md:block"></div>
+
+  <!-- Mobile Menu Overlay -->
+  <div id="mobile-menu" class="fixed inset-0 z-50 bg-white/98 backdrop-blur-xl transform translate-x-full transition-transform duration-300 flex flex-col justify-center items-center space-y-8 md:hidden">
+    <button id="close-menu" class="absolute top-6 right-6 p-2 text-gray-600 hover:text-brand-600 hoverable">
+      <span class="material-symbols-outlined text-4xl">close</span>
+    </button>
+    <a href="#home" class="text-3xl font-serif text-gray-800 hover:text-brand-600 hoverable" onclick="toggleMenu()">Home</a>
+    <a href="#about" class="text-3xl font-serif text-gray-800 hover:text-brand-600 hoverable" onclick="toggleMenu()">About</a>
+    <a href="#shop" class="text-3xl font-serif text-gray-800 hover:text-brand-600 hoverable" onclick="toggleMenu()">Shop</a>
+    <a href="#reviews" class="text-3xl font-serif text-gray-800 hover:text-brand-600 hoverable" onclick="toggleMenu()">Reviews</a>
+    <a href="#contact" class="text-3xl font-serif text-gray-800 hover:text-brand-600 hoverable" onclick="toggleMenu()">Contact</a>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="fixed w-full z-40 transition-all duration-300" id="navbar">
+    <div class="container mx-auto px-4 md:px-6 py-4">
+      <div class="flex items-center justify-between">
+        <!-- Logo -->
+        <a href="#" class="flex items-center group hoverable gap-3">
+          <img src="image/logo.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3028/3028573.png'" alt="Flowers Pick Logo" class="h-10 w-10 object-contain group-hover:rotate-12 transition-transform duration-300">
+          
+          <div class="flex flex-col">
+            <span class="text-xl md:text-2xl font-serif font-bold text-gray-900 leading-none">Flowers Pick</span>
+            <span class="text-[10px] text-brand-600 font-bold tracking-widest uppercase">Blooming Paradise</span>
+          </div>
+        </a>
+
+        <!-- Desktop Links -->
+        <div class="hidden md:flex space-x-8 text-sm font-medium text-gray-600 items-center">
+          <a href="#home" class="hover:text-brand-600 transition-colors hoverable relative group">Home<span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-brand-600 transition-all group-hover:w-full"></span></a>
+          <a href="#about" class="hover:text-brand-600 transition-colors hoverable relative group">About<span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-brand-600 transition-all group-hover:w-full"></span></a>
+          <a href="#shop" class="hover:text-brand-600 transition-colors hoverable relative group">Shop<span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-brand-600 transition-all group-hover:w-full"></span></a>
+          <a href="#reviews" class="hover:text-brand-600 transition-colors hoverable relative group">Reviews<span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-brand-600 transition-all group-hover:w-full"></span></a>
+          <a href="#contact" class="hover:text-brand-600 transition-colors hoverable relative group">Contact<span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-brand-600 transition-all group-hover:w-full"></span></a>
+        </div>
+        
+        <!-- Actions -->
+        <div class="flex items-center gap-3">
+          <a href="#" class="hidden md:flex relative p-2 text-gray-600 hover:text-brand-600 hoverable">
+            <span class="material-symbols-outlined">shopping_bag</span>
+            <span class="absolute top-0 right-0 h-2.5 w-2.5 bg-brand-600 border border-white rounded-full"></span>
+          </a>
+          <button class="hidden md:flex items-center text-sm font-medium text-white bg-black hover:bg-brand-600 border border-transparent px-5 py-2.5 rounded-full transition-all hoverable btn-ripple shadow-lg">
+            Follow
+          </button>
+          <button class="md:hidden p-2 text-gray-600 hover:text-brand-600 hoverable" id="open-menu">
+            <span class="material-symbols-outlined text-3xl">menu</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Product Details Modal -->
+  <div id="product-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4">
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-md transition-opacity opacity-0" id="modal-backdrop" onclick="closeModal()"></div>
+    
+    <!-- Modal Content -->
+    <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto flex flex-col md:flex-row transform scale-90 opacity-0 transition-all duration-300" id="modal-content">
+      <button onclick="closeModal()" class="absolute top-4 right-4 z-10 p-2 bg-white/80 backdrop-blur rounded-full hover:bg-brand-100 text-gray-600 hover:text-brand-600 transition-colors hoverable shadow-md">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+      
+      <div class="w-full md:w-1/2 h-64 md:h-auto bg-gray-50 relative overflow-hidden group">
+        <img id="modal-img" src="" alt="Flower" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+      </div>
+      
+      <div class="w-full md:w-1/2 p-8 lg:p-12 flex flex-col">
+        <div class="flex items-center gap-2 mb-4">
+          <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold uppercase tracking-wide">In Stock</span>
+          <div class="flex text-yellow-400 text-sm">
+            <span class="material-symbols-outlined text-sm filled">star</span>
+            <span class="material-symbols-outlined text-sm filled">star</span>
+            <span class="material-symbols-outlined text-sm filled">star</span>
+            <span class="material-symbols-outlined text-sm filled">star</span>
+            <span class="material-symbols-outlined text-sm filled">star_half</span>
+            <span class="text-gray-400 ml-1">(94K)</span>
+          </div>
+        </div>
+
+        <h2 id="modal-title" class="text-3xl lg:text-4xl font-serif font-bold text-gray-900 mb-2"></h2>
+        <p id="modal-price" class="text-3xl text-brand-600 font-serif font-semibold mb-6"></p>
+        
+        <p id="modal-desc" class="text-gray-600 leading-relaxed mb-6 text-sm md:text-base"></p>
+        
+        <!-- Details List -->
+        <div class="space-y-3 mb-8 bg-gray-50 p-4 rounded-xl">
+            <div class="flex items-center text-sm text-gray-700">
+                <span class="material-symbols-outlined text-brand-500 mr-3 text-lg">local_shipping</span>
+                <span>Delivery: Dhaka Division</span>
+            </div>
+            <div class="flex items-center text-sm text-gray-700">
+                <span class="material-symbols-outlined text-brand-500 mr-3 text-lg">verified</span>
+                <span>Fresh & Artificial Available</span>
+            </div>
+            <div class="flex items-center text-sm text-gray-700">
+                <span class="material-symbols-outlined text-brand-500 mr-3 text-lg">call</span>
+                <span>Order: 01734-839025</span>
+            </div>
+        </div>
+
+        <div class="mt-auto flex gap-4">
+            <!-- Quantity -->
+            <div class="flex items-center border border-gray-300 rounded-xl">
+                <button class="px-3 py-2 hover:text-brand-600 transition" onclick="adjustQty(-1)">-</button>
+                <input type="text" value="1" id="modal-qty" class="w-8 text-center bg-transparent border-none outline-none font-medium" readonly>
+                <button class="px-3 py-2 hover:text-brand-600 transition" onclick="adjustQty(1)">+</button>
+            </div>
+            <!-- Add to Cart -->
+            <button class="flex-1 bg-gray-900 text-white font-medium py-3 rounded-xl hover:bg-brand-600 transition-all shadow-lg hover:shadow-brand-500/30 hoverable btn-ripple flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-sm">shopping_cart</span> Add to Cart
+            </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <main class="relative z-10 pt-20">
+    
+    <!-- Hero / Profile Section -->
+    <section id="home" class="min-h-[85vh] flex items-center relative">
+      <div class="container mx-auto px-6 relative z-10">
+        <div class="glass-card rounded-[3rem] p-8 md:p-12 shadow-2xl reveal active border border-white/50">
+            <div class="flex flex-col md:flex-row items-center gap-10">
+                
+                <!-- Profile Image / Parallax -->
+                <div class="w-full md:w-1/3 flex justify-center">
+                    <div class="relative w-64 h-64 md:w-80 md:h-80">
+                         <!-- Rotating decorative ring -->
+                        <div class="absolute inset-0 border-2 border-dashed border-brand-300 rounded-full animate-spin-slow"></div>
+                        <div class="absolute inset-0 bg-white p-2 rounded-full shadow-xl img-container overflow-hidden">
+                            <img src="image/logo.png" 
+                                 onerror="this.src='https://images.unsplash.com/photo-1582794543139-8ac92a900277?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'"
+                                 alt="Flowers Pick Store" 
+                                 class="w-full h-full object-cover rounded-full">
+                        </div>
+                        <div class="absolute bottom-4 right-4 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg border-2 border-white animate-pulse-slow">
+                            ALWAYS OPEN
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Profile Details -->
+                <div class="w-full md:w-2/3 text-center md:text-left">
+                    <div class="flex flex-col md:flex-row items-center md:items-start gap-4 mb-4">
+                        <h1 class="text-4xl md:text-6xl font-serif font-bold text-gray-900">Flowers Pick</h1>
+                        <span class="px-3 py-1 bg-brand-100 text-brand-800 rounded-full text-xs font-bold tracking-wider uppercase mt-2">Florist</span>
+                    </div>
+
+                    <!-- Social Stats -->
+                    <div class="flex justify-center md:justify-start gap-6 text-sm mb-6 text-gray-600">
+                        <div><strong class="text-gray-900 text-lg">94K</strong> Followers</div>
+                        <div><strong class="text-gray-900 text-lg">26</strong> Following</div>
+                        <div class="flex items-center gap-1 text-yellow-500"><span class="material-symbols-outlined text-sm">star</span> 4.9 Rating</div>
+                    </div>
+
+                    <p class="text-gray-600 text-lg mb-8 max-w-2xl leading-relaxed">
+                        Welcome to our blooming paradise! <strong>"FlowersPick"</strong> a flower shop, offers a wide variety of fresh and artificial flower bouquets. Making every occasion special in Dhaka.
+                    </p>
+
+                    <!-- Location Badge -->
+                    <div class="inline-flex items-center gap-2 bg-gray-50 border border-gray-200 px-4 py-2 rounded-lg mb-8 text-sm text-gray-600">
+                        <span class="material-symbols-outlined text-brand-500">location_on</span>
+                        <span>223/4 Agargong Taltola, Dhaka, Bangladesh, 1207</span>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex flex-wrap gap-4 justify-center md:justify-start">
+                        <a href="#shop" class="bg-gray-900 text-white font-medium rounded-full px-8 py-3 hover:bg-brand-600 transition-all shadow-lg hoverable btn-ripple border-beam">
+                            Shop Bouquets
+                        </a>
+                        <a href="https://wa.me/8801734839025" target="_blank" class="flex items-center gap-2 bg-[#25D366] text-white font-medium rounded-full px-8 py-3 hover:bg-[#128C7E] transition-all shadow-lg hoverable">
+                            <span class="material-symbols-outlined">chat</span> WhatsApp
+                        </a>
+                        <a href="mailto:flowespick@gmail.com" class="bg-white border border-gray-200 text-gray-800 font-medium rounded-full px-8 py-3 hover:bg-gray-50 transition-all hoverable">
+                            Message
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Services / Values -->
+    <section id="about" class="py-12">
+        <div class="container mx-auto px-6">
+            <div class="grid md:grid-cols-3 gap-6 reveal">
+                <!-- Telegram Community -->
+                <div class="glass-card p-6 rounded-3xl text-center group hover:scale-[1.02] hoverable">
+                    <div class="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-blue-100 transition-colors">
+                        <span class="material-symbols-outlined text-blue-500 text-3xl">groups</span>
+                    </div>
+                    <h3 class="font-bold text-lg mb-1">Community</h3>
+                    <p class="text-gray-500 text-sm mb-3">Join our channel</p>
+                    <div class="text-xs font-bold text-gray-900 bg-gray-100 inline-block px-3 py-1 rounded-full mb-3">534 Members</div>
+                    <br>
+                    <a href="#" class="text-blue-600 text-sm font-bold hover:underline">Join Channel</a>
+                </div>
+
+                <!-- Location Details -->
+                <div class="glass-card p-6 rounded-3xl text-center group hover:scale-[1.02] hoverable border-brand-200 border">
+                    <div class="w-16 h-16 bg-brand-50 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-brand-100 transition-colors">
+                        <span class="material-symbols-outlined text-brand-500 text-3xl">storefront</span>
+                    </div>
+                    <h3 class="font-bold text-lg mb-1">Visit Us</h3>
+                    <p class="text-gray-500 text-sm mb-2">Always Open</p>
+                    <p class="text-xs text-gray-600 px-4">Agargong Taltola, Dhaka Division, Bangladesh</p>
+                </div>
+
+                <!-- Contact Info -->
+                <div class="glass-card p-6 rounded-3xl text-center group hover:scale-[1.02] hoverable">
+                    <div class="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-green-100 transition-colors">
+                        <span class="material-symbols-outlined text-green-600 text-3xl">call</span>
+                    </div>
+                    <h3 class="font-bold text-lg mb-1">Contact Info</h3>
+                    <p class="text-gray-900 font-bold text-sm">01734-839025</p>
+                    <p class="text-gray-500 text-sm mb-2">flowespick@gmail.com</p>
+                    <p class="text-brand-600 text-xs font-bold">flowerspick.com</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Shop/Products Section -->
+    <section id="shop" class="py-20 relative">
+      <!-- Decorative Lottie -->
+      <div class="absolute top-0 right-0 w-32 h-32 opacity-50 pointer-events-none">
+         <lottie-player src="https://assets3.lottiefiles.com/packages/lf20_fev3n9.json" background="transparent" speed="1" loop autoplay></lottie-player>
+      </div>
+
+      <div class="container mx-auto px-6 max-w-7xl">
+        <div class="text-center mb-16 reveal">
+          <span class="text-brand-600 font-bold tracking-widest uppercase text-xs mb-3 block">Our Collection</span>
+          <h2 class="text-4xl md:text-5xl font-serif font-bold text-gray-900 mb-4">Fresh & Artificial Picks</h2>
+          <div class="h-1 w-20 bg-brand-500 mx-auto rounded-full"></div>
+        </div>
+
+        <!-- Filters -->
+        <div class="flex justify-center gap-3 mb-10 flex-wrap reveal delay-100">
+           <button class="px-5 py-2 rounded-full bg-black text-white text-sm hoverable shadow-lg">All</button>
+           <button class="px-5 py-2 rounded-full bg-white border border-gray-200 text-gray-600 text-sm hover:bg-brand-50 hover:border-brand-200 transition-colors hoverable">Bouquets</button>
+           <button class="px-5 py-2 rounded-full bg-white border border-gray-200 text-gray-600 text-sm hover:bg-brand-50 hover:border-brand-200 transition-colors hoverable">Artificial</button>
+           <button class="px-5 py-2 rounded-full bg-white border border-gray-200 text-gray-600 text-sm hover:bg-brand-50 hover:border-brand-200 transition-colors hoverable">Gifts</button>
+        </div>
+
+        <!-- Product Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8" id="product-grid">
+          <!-- Products injected via JS -->
+        </div>
+
+        <div class="mt-16 text-center">
+          <button class="inline-flex items-center justify-center px-8 py-3 bg-white border border-gray-300 text-gray-900 font-medium rounded-full hover:bg-gray-50 transition-all hoverable shadow-sm">
+            Load More Products <span class="material-symbols-outlined ml-2 text-sm">expand_more</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Reviews Section (NEW) -->
+    <section id="reviews" class="py-20 overflow-hidden bg-brand-50/30">
+        <div class="container mx-auto px-6 text-center mb-10 reveal">
+            <span class="text-brand-600 font-bold tracking-widest uppercase text-xs mb-3 block">Testimonials</span>
+            <h2 class="text-4xl font-serif font-bold text-gray-900">What Our Customers Say</h2>
+        </div>
+
+        <!-- Scrolling Review Container -->
+        <div class="relative w-full overflow-hidden">
+             <!-- Left Fade -->
+            <div class="absolute top-0 left-0 w-20 h-full bg-gradient-to-r from-white to-transparent z-10"></div>
+            <!-- Right Fade -->
+            <div class="absolute top-0 right-0 w-20 h-full bg-gradient-to-l from-white to-transparent z-10"></div>
+
+            <div class="flex gap-6 animate-scroll w-[250%] hover:pause hoverable" id="reviews-track">
+                <!-- Reviews injected via JS -->
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Footer -->
+    <section id="contact" class="py-24 bg-gray-900 text-white relative overflow-hidden rounded-t-[3rem] mt-10">
+      <!-- Background glow -->
+      <div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-full bg-brand-900/30 blur-[100px] rounded-full"></div>
+
+      <div class="container mx-auto px-6 text-center relative z-10 reveal">
+        <h2 class="text-4xl md:text-6xl font-serif font-bold mb-6">Let's create something beautiful.</h2>
+        <p class="text-gray-400 text-lg mb-10 max-w-xl mx-auto">
+            Order fresh flowers for your loved ones in Dhaka today. 
+            <br><span class="text-brand-400">Call us: 01734-839025</span>
+        </p>
+        
+        <div class="flex flex-col sm:flex-row gap-6 justify-center items-center">
+          <a href="https://wa.me/8801734839025" class="bg-brand-600 text-white font-bold rounded-full px-10 py-4 hover:bg-brand-500 transition-all hoverable shadow-lg shadow-brand-900/50 flex items-center gap-2 transform hover:-translate-y-1">
+             <span class="material-symbols-outlined">chat</span> Message on WhatsApp
+          </a>
+          <a href="tel:01734839025" class="bg-transparent border border-gray-600 text-white font-bold rounded-full px-10 py-4 hover:bg-white hover:text-black transition-all hoverable flex items-center gap-2">
+            <span class="material-symbols-outlined">call</span> Call Now
+          </a>
+        </div>
+
+        <div class="mt-20 border-t border-gray-800 pt-10 flex flex-col md:flex-row justify-between items-center text-sm text-gray-500">
+            <div class="mb-4 md:mb-0 text-left">
+                <p class="font-bold text-white mb-1">Flowers Pick</p>
+                <p>223/4 Agargong Taltola, Dhaka</p>
+            </div>
+            <div class="flex gap-6">
+                <a href="#" class="hover:text-brand-400 transition-colors">Privacy</a>
+                <a href="#" class="hover:text-brand-400 transition-colors">Terms</a>
+                <span>&copy; 2026 Flowers Pick</span>
+            </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- JavaScript Logic -->
+  <script>
+    /* =========================================
+       1. Three.js Aurora Background (White Theme)
+       ========================================= */
+    const initBackground = () => {
+        let scene, camera, renderer, material;
+        let startTime = Date.now();
+        const container = document.getElementById('canvas-container');
+
+        const vertexShader = `
+            varying vec2 vUv;
+            void main() {
+                vUv = uv;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `;
+
+        const fragmentShader = `
+            uniform float iTime;
+            uniform vec2 iResolution;
+            varying vec2 vUv;
+            #define S smoothstep
+
+            vec4 Line(vec2 uv, float speed, float height, vec3 col) {
+                uv.y += S(1., 0., abs(uv.x)) * sin(iTime * speed + uv.x * height) * 0.2;
+                return vec4(S(0.06 * S(0.2, 0.9, abs(uv.x)), 0., abs(uv.y) - 0.004) * col, 1.0) * S(1., 0.3, abs(uv.x));
+            }
+
+            void main() {
+                vec2 uv = (vUv - 0.5) * vec2(iResolution.x / iResolution.y, 1.0);
+                vec4 O = vec4(0.);
+                
+                for (float i = 0.; i <= 4.; i += 1.) {
+                    float t = i / 4.;
+                    float timeOffset = iTime * 0.2 + t * 2.0;
+                    
+                    vec3 auroraColor = vec3(
+                        0.5 + 0.5 * sin(timeOffset + t * 3.0),
+                        0.4 + 0.5 * sin(timeOffset * 1.2 + t * 2.0),
+                        0.6 + 0.4 * cos(timeOffset * 0.8 + t * 1.5)
+                    );
+                    
+                    auroraColor = mix(auroraColor, vec3(1.0, 0.2, 0.6), sin(timeOffset) * 0.5 + 0.5); 
+                    
+                    O += Line(uv, 0.5 + t * 0.5, 3. + t, auroraColor);
+                }
+                gl_FragColor = O;
+            }
+        `;
+
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            material = new THREE.ShaderMaterial({
+                vertexShader: vertexShader,
+                fragmentShader: fragmentShader,
+                uniforms: {
+                    iTime: { value: 0 },
+                    iResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
+                }
+            });
+
+            const geometry = new THREE.PlaneGeometry(2, 2);
+            const plane = new THREE.Mesh(geometry, material);
+            scene.add(plane);
+
+            animate();
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            material.uniforms.iTime.value = (Date.now() - startTime) * 0.001;
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            material.uniforms.iResolution.value.set(window.innerWidth, window.innerHeight);
+        }
+
+        init();
+    };
+
+    /* =========================================
+       2. Application Logic (Flowers Pick)
+       ========================================= */
+
+    // Product Data (Mapped to images 1.jpg - 12.jpg)
+    const products = [
+      { id: 1, name: "Money Bouquet Special", price: "3,500৳", img: "image/1.jpg", desc: "A creative mix of fresh flowers and arranged bank notes. (Value of notes extra)." },
+      { id: 2, name: "Lily & Rose Mix", price: "2,200৳", img: "image/2.jpg", desc: "Elegant lilies paired with vibrant roses in black wrapping." },
+      { id: 3, name: "Sunflower Sunshine", price: "1,500৳", img: "image/3.jpg", desc: "Bright sunflowers with baby's breath to light up any room." },
+      { id: 4, name: "Premium Red Roses", price: "2,800৳", img: "image/4.jpg", desc: "High-quality red roses with white lilies in a luxury bouquet." },
+      { id: 5, name: "Giant Rose Bundle", price: "4,500৳", img: "image/5.jpg", desc: "An impressive, large bouquet of over 50 fresh red roses." },
+      { id: 6, name: "Green Money Flower", price: "3,000৳", img: "image/6.jpg", desc: "Artistically folded money notes arranged like a blooming flower." },
+      { id: 7, name: "Classic Red Bunch", price: "1,200৳", img: "image/7.jpg", desc: "A simple yet passionate bunch of deep red roses." },
+      { id: 8, name: "White Rose Purity", price: "2,000৳", img: "image/8.jpg", desc: "Pristine white roses representing innocence and purity." },
+      { id: 9, name: "Deep Red Velvet", price: "1,800৳", img: "image/9.jpg", desc: "Dark red roses with baby's breath in stylish black paper." },
+      { id: 10, name: "Chocolate & Rose", price: "3,200৳", img: "image/10.jpg", desc: "Ferrero Rocher chocolates mixed with red roses. The ultimate gift." },
+      { id: 11, name: "Pink Rose Delight", price: "1,600৳", img: "image/11.jpg", desc: "Soft pink and peach roses for a gentle romantic gesture." },
+      { id: 12, name: "Rustic Mix", price: "1,400৳", img: "image/12.jpg", desc: "A vibrant mix of carnations and colorful seasonal flowers." }
+    ];
+
+    // Reviewer Data
+    const reviewers = [
+        { name: "Nusrat", text: "The bouquet was absolutely stunning! Fresh flowers and beautiful wrapping." },
+        { name: "Mim", text: "Ordered for my sister's wedding. Everyone loved it. Highly recommended!" },
+        { name: "Nabila", text: "Fast delivery to Dhanmondi. The money bouquet was perfect." },
+        { name: "Sadia", text: "Fresh roses and they lasted a long time. Will order again." },
+        { name: "Arif", text: "Great service. They customized the order exactly how I wanted." },
+        { name: "Sakib", text: "Best flower shop in Dhaka. Very professional behavior." },
+        { name: "Mahmud", text: "Reasonable prices compared to others. Good quality." },
+        { name: "Nayeem", text: "Surprised my wife with the chocolate bouquet. She was so happy!" },
+        { name: "Tanvir", text: "Delivery man was polite and on time. 5 stars." },
+        { name: "Imran", text: "Beautiful arrangement. The lilies smell amazing." }
+    ];
+
+    // Render Products
+    const grid = document.getElementById('product-grid');
+    products.forEach((product, index) => {
+      const delay = index * 50;
+      // Fallback image if local file fails
+      const fallback = "https://images.unsplash.com/photo-1561181286-d3fee7d55364?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80";
+      
+      const card = `
+        <div class="glass-card rounded-2xl overflow-hidden product-card group reveal h-full flex flex-col hover:border-brand-300 border border-white" style="transition-delay: ${delay}ms" onclick="openModal(${product.id})">
+          <div class="relative h-64 overflow-hidden cursor-pointer">
+            <img src="${product.img}" onerror="this.src='${fallback}'" alt="${product.name}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
+            <div class="absolute top-3 right-3 bg-white/95 backdrop-blur px-3 py-1 rounded-lg text-sm font-bold text-gray-900 shadow-sm">
+              ${product.price}
+            </div>
+            <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <span class="bg-white text-black px-6 py-2 rounded-full font-medium text-sm transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 shadow-xl hoverable">View Details</span>
+            </div>
+          </div>
+          <div class="p-5 flex-1 flex flex-col">
+            <h3 class="font-serif font-bold text-lg text-gray-900 mb-1 group-hover:text-brand-600 transition-colors">${product.name}</h3>
+            <p class="text-xs text-gray-400 uppercase tracking-wide mb-2">Flowers Pick</p>
+            <div class="mt-auto flex justify-between items-center pt-3 border-t border-gray-100">
+              <button class="text-brand-600 text-sm font-bold uppercase tracking-wide hover:underline hoverable">Add to Cart</button>
+              <button class="text-gray-400 hover:text-brand-500 hoverable transition-colors"><span class="material-symbols-outlined text-xl">favorite</span></button>
+            </div>
+          </div>
+        </div>
+      `;
+      grid.innerHTML += card;
+    });
+
+    // Render Reviews
+    const reviewTrack = document.getElementById('reviews-track');
+    // Double the array for infinite scroll illusion
+    const displayReviews = [...reviewers, ...reviewers];
+    
+    displayReviews.forEach((review) => {
+        const item = `
+            <div class="glass-card w-72 p-6 rounded-2xl flex-shrink-0 flex flex-col justify-center text-left hover:border-brand-300 transition-colors bg-white/60">
+                <div class="flex text-yellow-400 mb-3 text-sm">
+                    <span class="material-symbols-outlined filled text-lg">star</span>
+                    <span class="material-symbols-outlined filled text-lg">star</span>
+                    <span class="material-symbols-outlined filled text-lg">star</span>
+                    <span class="material-symbols-outlined filled text-lg">star</span>
+                    <span class="material-symbols-outlined filled text-lg">star</span>
+                </div>
+                <p class="text-gray-600 text-sm italic mb-4 leading-relaxed">"${review.text}"</p>
+                <div class="flex items-center gap-3 mt-auto">
+                    <div class="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 font-bold text-xs">
+                        ${review.name.charAt(0)}
+                    </div>
+                    <span class="font-bold text-gray-900 text-sm">${review.name}</span>
+                </div>
+            </div>
+        `;
+        reviewTrack.innerHTML += item;
+    });
+
+
+    // Modal Functions
+    const modal = document.getElementById('product-modal');
+    const modalBackdrop = document.getElementById('modal-backdrop');
+    const modalContent = document.getElementById('modal-content');
+    const qtyInput = document.getElementById('modal-qty');
+
+    function openModal(id) {
+      const product = products.find(p => p.id === id);
+      if(!product) return;
+      
+      document.getElementById('modal-img').src = product.img;
+      document.getElementById('modal-title').textContent = product.name;
+      document.getElementById('modal-price').textContent = product.price;
+      document.getElementById('modal-desc').textContent = product.desc;
+      qtyInput.value = 1;
+      
+      modal.classList.remove('hidden');
+      
+      // Animations for opening
+      setTimeout(() => {
+        modalBackdrop.classList.remove('opacity-0');
+        modalContent.classList.remove('scale-90', 'opacity-0');
+        modalContent.classList.add('scale-100', 'opacity-100');
+      }, 10);
+      
+      document.body.style.overflow = 'hidden'; 
+    }
+    
+    function closeModal() {
+      modalBackdrop.classList.add('opacity-0');
+      modalContent.classList.remove('scale-100', 'opacity-100');
+      modalContent.classList.add('scale-90', 'opacity-0');
+      
+      setTimeout(() => {
+          modal.classList.add('hidden');
+          document.body.style.overflow = ''; 
+      }, 300);
+    }
+
+    function adjustQty(amount) {
+        let val = parseInt(qtyInput.value);
+        val += amount;
+        if(val < 1) val = 1;
+        qtyInput.value = val;
+    }
+
+    // Navbar Scroll Effect
+    const navbar = document.getElementById('navbar');
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 50) {
+        navbar.classList.add('glass-nav');
+        navbar.classList.add('py-2');
+        navbar.classList.remove('py-4');
+      } else {
+        navbar.classList.remove('glass-nav');
+        navbar.classList.remove('py-2');
+        navbar.classList.add('py-4');
+      }
+    });
+
+    // Mobile Menu
+    const mobileMenu = document.getElementById('mobile-menu');
+    const openBtn = document.getElementById('open-menu');
+    const closeBtn = document.getElementById('close-menu');
+
+    function toggleMenu() {
+      mobileMenu.classList.toggle('translate-x-full');
+      if (!mobileMenu.classList.contains('translate-x-full')) {
+          document.body.style.overflow = 'hidden';
+      } else {
+          document.body.style.overflow = '';
+      }
+    }
+    openBtn.addEventListener('click', toggleMenu);
+    closeBtn.addEventListener('click', toggleMenu);
+
+    // Scroll Observer (Reveal Animation)
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('active');
+        }
+      });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+    // Custom Cursor
+    const cursorDot = document.querySelector('.cursor-dot');
+    const cursorOutline = document.querySelector('.cursor-outline');
+
+    window.addEventListener('mousemove', (e) => {
+      const posX = e.clientX;
+      const posY = e.clientY;
+
+      cursorDot.style.left = `${posX}px`;
+      cursorDot.style.top = `${posY}px`;
+
+      cursorOutline.animate({
+        left: `${posX}px`,
+        top: `${posY}px`
+      }, { duration: 500, fill: "forwards" });
+    });
+
+    document.addEventListener('mouseover', (e) => {
+        if(e.target.closest('.hoverable')) {
+            cursorOutline.classList.add('hovered');
+        } else {
+            cursorOutline.classList.remove('hovered');
+        }
+    });
+
+    // Init Three.js
+    initBackground();
+
+  </script>
+</body>
+</html>
